@@ -33,7 +33,7 @@ Sensitive data such as IPs, credentials, and flags are replaced with placeholder
 
 - **Website:** [https://ervifssnt.github.io/portfolio/](https://ervifssnt.github.io/portfolio/)  
 - **Email:** susantoerviano@gmail.com  
-- **LinkedIn:** *(add your link here if you want recruiters to find you)*
+- **LinkedIn:** *https://www.linkedin.com/in/erviano-susanto-647490386/*
 
 ---
 
