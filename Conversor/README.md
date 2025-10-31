@@ -3,7 +3,7 @@
 ![Conversor](../images/Conversor.png)
 
 **Machine:** Conversor  
-**Difficulty:** Medium  
+**Difficulty:** Easy  
 **OS:** Linux  
 **IP:** 10.10.11.92  
 **Date:** 2025-10-31  
@@ -13,7 +13,7 @@
 
 ## Summary
 
-Conversor is a medium Linux box exploiting an XSLT injection in a file conversion web app.  
+Conversor is an easy Linux box exploiting an XSLT injection in a file conversion web app.  
 The attacker writes a Python cron webshell for RCE, extracts credentials from a weakly hashed database, and escalates privileges via `sudo needrestart`.
 
 **Attack Path:**  

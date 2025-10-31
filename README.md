@@ -12,7 +12,7 @@ Each writeup demonstrates a full exploitation path — from enumeration to privi
 | [Dark Zero](./DarkZero) | Windows | Hard | Active Directory • SQL Server • Kerberos • Lateral Movement |
 | [Expressway](./Expressway) | Linux | Easy | IPsec VPN • UDP Enumeration • Privilege Escalation (CVE-2025-32463) |
 | [Soulmate](./Soulmate) | Linux | Easy | CrushFTP Auth Bypass (CVE-2025-31161) • Web Shell • Erlang SSH (root) |
-| [Conversor](./Conversor) | Linux | Medium | XSLT Injection • Cron RCE • Weak Hash Cracking • needrestart Sudo |
+| [Conversor](./Conversor) | Linux | Easy | XSLT Injection • Cron RCE • Weak Hash Cracking • needrestart Sudo |
 
 Each folder contains a detailed **README.md** explaining methodology, key takeaways, and defensive recommendations.  
 Sensitive data such as IPs, credentials, and flags are replaced with placeholders.
