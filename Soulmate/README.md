@@ -1,5 +1,7 @@
 # Soulmate — Hack The Box
 
+![Soulmate](../images/Soulmate.png)
+
 ## Machine Info
 
 - Difficulty: Easy  

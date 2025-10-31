@@ -1,5 +1,7 @@
 # Expressway — Redacted Writeup
 
+![Expressway](../images/Expressway.png)
+
 > **Spoiler policy:** This machine is currently active on Hack The Box. This public writeup is **redacted** to avoid spoilers: flags, credentials, full exploit code, and sensitive artifacts have been removed. The document focuses on methodology, findings, and high-level mitigation advice.
 
 **Box:** Expressway  

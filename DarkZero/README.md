@@ -1,5 +1,7 @@
 # Dark Zero — Redacted Writeup
 
+![Dark Zero](../images/Darkzero.png)
+
 > **Spoiler policy:** This multi-domain AD box is currently active on Hack The Box. This public writeup is **redacted**: flags, credentials, full exploit code, and sensitive artifacts have been removed. The document focuses on high-level methodology, findings, and defensive recommendations.
 
 **Box:** Dark Zero  
