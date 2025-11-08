@@ -7,7 +7,6 @@
 **OS:** Linux
 **IP:** 10.10.11.x
 **Release Date:** November 1, 2025
-**Creator:** [babywyrm](https://github.com/babywyrm)
 **Tags:** WordPress, GiveWP Plugin, Kubernetes, PHP-CGI, Container Escape, RBAC, runc
 
 ---
