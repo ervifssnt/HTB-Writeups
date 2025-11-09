@@ -9,12 +9,12 @@ Each writeup demonstrates a full exploitation path — from enumeration to privi
 
 | Box | OS | Difficulty | Focus Areas |
 |-----|----|-------------|--------------|
+| [Hercules](./Hercules) | Windows | Insane | Active Directory • LDAP Injection • Shadow Credentials • AD CS (ESC3) • Kerberos Delegation |
+| [Dark Zero](./DarkZero) | Windows | Hard | Active Directory • SQL Server • Kerberos • Lateral Movement |
+| [Giveback](./Giveback) | Linux | Medium | WordPress GiveWP RCE • Kubernetes RBAC • PHP-CGI • Container Escape (runc) |
 | [CodePartTwo](./CodePartTwo) | Linux | Easy | js2py RCE (CVE-2024-28397) • Hash Cracking • Sudo Misconfiguration |
 | [Conversor](./Conversor) | Linux | Easy | XSLT Injection • Cron RCE • Weak Hash Cracking • needrestart Sudo |
-| [Dark Zero](./DarkZero) | Windows | Hard | Active Directory • SQL Server • Kerberos • Lateral Movement |
 | [Expressway](./Expressway) | Linux | Easy | IPsec VPN • UDP Enumeration • Privilege Escalation (CVE-2025-32463) |
-| [Giveback](./Giveback) | Linux | Medium | WordPress GiveWP RCE • Kubernetes RBAC • PHP-CGI • Container Escape (runc) |
-| [Hercules](./Hercules) | Windows | Insane | Active Directory • LDAP Injection • Shadow Credentials • AD CS (ESC3) • Kerberos Delegation |
 | [Soulmate](./Soulmate) | Linux | Easy | CrushFTP Auth Bypass (CVE-2025-31161) • Web Shell • Erlang SSH (root) |
 
 Each folder contains a detailed **README.md** explaining methodology, key takeaways, and defensive recommendations.  
