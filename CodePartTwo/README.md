@@ -2,32 +2,33 @@
 
 ![CodePartTwo](../images/CodePartTwo.png)
 
-![Difficulty: Easy](https://img.shields.io/badge/Difficulty-Easy-green)
-![OS: Linux](https://img.shields.io/badge/OS-Linux-blue)
-![Season: 8](https://img.shields.io/badge/Season-8-orange)
-
----
-
-## Machine Information
-
-| Attribute | Details |
-|-----------|---------|
-| **Machine Name** | CodePartTwo |
-| **Operating System** | Linux (Ubuntu 20.04) |
-| **Difficulty** | Easy |
-| **Key Vulnerabilities** | CVE-2024-28397 (js2py RCE), Weak password hashes, Sudo misconfiguration |
+**Machine:** CodePartTwo  
+**Difficulty:** Easy  
+**OS:** Linux  
+**Tags:** js2py RCE, CVE-2024-28397, Hash Cracking, Sudo Misconfiguration
 
 ---
 
 ## Table of Contents
 
-1. [Reconnaissance](#reconnaissance)
-2. [Enumeration](#enumeration)
-3. [Initial Foothold](#initial-foothold)
-4. [Lateral Movement](#lateral-movement)
-5. [Privilege Escalation](#privilege-escalation)
-6. [Remediation](#remediation)
-7. [Lessons Learned](#lessons-learned)
+1. [Summary](#summary)
+2. [Reconnaissance](#reconnaissance)
+3. [Enumeration](#enumeration)
+4. [Initial Foothold](#initial-foothold)
+5. [Lateral Movement](#lateral-movement)
+6. [Privilege Escalation](#privilege-escalation)
+7. [Summary of Exploits](#summary-of-exploits)
+8. [Remediation](#remediation)
+9. [Tools](#tools)
+
+---
+
+## Summary
+
+CodePartTwo is an Easy Linux machine that demonstrates exploitation of a vulnerable js2py library (CVE-2024-28397) leading to remote code execution, weak password hash cracking, and privilege escalation through sudo misconfiguration. The attack chain involves source code disclosure, sandbox escape exploitation, database credential extraction, and configuration file manipulation.
+
+**Attack Path:**  
+Web enumeration → Source code disclosure → js2py RCE (CVE-2024-28397) → Database enumeration → Hash cracking → SSH access → Sudo exploitation → Root
 
 ---
 
@@ -392,6 +393,18 @@ HTB{redacted}
 
 ---
 
+## Summary of Exploits
+
+| Stage | Vulnerability | Technique | Result |
+|-------|---------------|-----------|--------|
+| 1 | Source Code Disclosure | Download App feature | Application source code |
+| 2 | CVE-2024-28397 | js2py sandbox escape | Remote code execution |
+| 3 | Weak Password Hashing | MD5 hash in database | Credential extraction |
+| 4 | Hash Cracking | Dictionary attack | User password |
+| 5 | Sudo Misconfiguration | Configuration injection | Root privilege escalation |
+
+---
+
 ## Remediation
 
 ### Critical Vulnerabilities
@@ -426,120 +439,25 @@ HTB{redacted}
 
 ---
 
-## Lessons Learned
-
-### Technical Skills Acquired
-
-✅ **Reconnaissance & Enumeration**
-- Port scanning with nmap
-- Web application analysis
-- Source code review
-- Dependency vulnerability research
-
-✅ **Exploitation**
-- CVE research and PoC adaptation
-- Sandbox escape techniques
-- Reverse shell crafting
-- Payload delivery via API endpoints
-
-✅ **Post-Exploitation**
-- SQLite database enumeration
-- Password hash identification
-- Hash cracking with hashcat
-- Lateral movement via credential reuse
-
-✅ **Privilege Escalation**
-- Sudo enumeration (`sudo -l`)
-- Configuration file manipulation
-- SUID binary exploitation
-- Command injection in privileged contexts
-
-### CTF Methodology
-
-1. **Always download and analyze source code** when available
-2. **Check dependencies** for known vulnerabilities (CVE databases)
-3. **Enumerate databases** for credentials and sensitive data
-4. **Crack weak hashes** with tools like hashcat/john
-5. **Check sudo privileges** immediately after gaining user access
-6. **Analyze writable configuration files** used by privileged processes
-7. **Test configuration injection** in backup/admin tools
-
-### Tools Used
+## Tools
 
 | Tool | Purpose |
 |------|---------|
-| nmap | Port scanning and service enumeration |
-| curl | HTTP request crafting and API testing |
-| sqlite3 | Database querying |
-| hashid | Hash type identification |
-| hashcat | Password hash cracking |
-| netcat | Reverse shell listener |
-| ssh | Remote access |
-| sed | Configuration file manipulation |
+| `nmap` | Port scanning and service enumeration |
+| `curl` | HTTP request crafting and API testing |
+| `sqlite3` | Database querying |
+| `hashid` | Hash type identification |
+| `hashcat` | Password hash cracking |
+| `netcat` | Reverse shell listener |
+| `ssh` | Remote access |
+| `sed` | Configuration file manipulation |
 
 ---
 
-## Attack Chain Summary
-
-```
-1. Nmap Scan
-   └─> Discovered Gunicorn on port 8000
-
-2. Web Enumeration
-   └─> Downloaded source code (app.zip)
-
-3. Source Code Analysis
-   └─> Found js2py==0.74 in requirements.txt
-
-4. Vulnerability Research
-   └─> Identified CVE-2024-28397 (RCE)
-
-5. Initial Exploitation
-   └─> Reverse shell as 'app' user
-
-6. Database Enumeration
-   └─> Extracted MD5 password hashes
-
-7. Hash Cracking
-   └─> Cracked marco's password: sweetangelbabylove
-
-8. Lateral Movement
-   └─> SSH as marco → User flag captured
-
-9. Sudo Enumeration
-   └─> Found NOPASSWD: /usr/local/bin/npbackup-cli
-
-10. Configuration Injection
-    └─> Modified npbackup.conf with pre_exec_commands
-
-11. Privilege Escalation
-    └─> Created SUID bash via sudo npbackup-cli
-
-12. Root Shell
-    └─> Executed /tmp/rootbash -p → Root flag captured
-```
-
----
-
-## References
-
-- [CVE-2024-28397 - js2py Sandbox Escape](https://github.com/Marven11/CVE-2024-28397-js2py-Sandbox-Escape)
-- [HackTheBox Platform](https://www.hackthebox.com/)
-- [GTFOBins - Sudo Privilege Escalation](https://gtfobins.github.io/)
-- [OWASP Top 10](https://owasp.org/www-project-top-ten/)
-
----
-
-## Tags
-
-`#HackTheBox` `#CTF` `#Linux` `#PrivilegeEscalation` `#CVE-2024-28397` `#js2py` `#WebExploitation` `#PenetrationTesting` `#OSCP-like`
-
----
-
-**Box Completed:** November 2, 2025  
-**Difficulty Rating:** Easy  
-**Skills Required:** Basic web enumeration, source code analysis, Linux privilege escalation  
-**Skills Learned:** CVE exploitation, configuration injection, SUID abuse
+**Author:** Erviano Florentino Susanto  
+**Platform:** Hack The Box  
+**Date:** Redacted  
+**Flags:** User `HTB{redacted}`, Root `HTB{redacted}`
 
 ---
 
