@@ -49,7 +49,7 @@ Sensitive data such as IPs, credentials, and flags are replaced with placeholder
 All testing described here was performed exclusively on **Hack The Box** infrastructure or authorized lab environments.  
 These writeups are for **educational and demonstration purposes only**.  
 No real-world systems were targeted or harmed.  
-All sensitive information (IP addresses, credentials, flags, hashes, ticket blobs) has been **sanitized** prior to publication
+All sensitive information (IP addresses, credentials, flags, hashes, ticket blobs) has been **sanitized** prior to publication.
 
 ---
 
